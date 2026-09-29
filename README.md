@@ -113,16 +113,21 @@ groq.api.key=YOUR_KEY
 
 ## Testing
 
-Not yet implemented — planned next: JUnit tests for `SchedulingService` covering the priority formula, a full schedule generation cycle, and recalculation after marking a session complete.
+`SchedulingService` is covered by JUnit tests verifying:
+- Total scheduled hours exactly match what each topic needs
+- Higher-difficulty topics are prioritized when exam dates are equal
+- No session is ever scheduled on or after its module's exam date
+- The schedule correctly recalculates and reduces remaining hours after a session is marked complete
+- An empty input (no topics) returns an empty schedule without error
+
+Run tests with `mvn test`.
 
 ## Known limitations
 - If daily hours can't cover all topics before an exam, the schedule under-allocates without warning
 - No user accounts (single-user)
 - Greedy heuristic, not a provably optimal schedule
-- No automated tests yet
 
 ## Future improvements
-- JUnit tests for the scheduling logic
 - Warn when a schedule is infeasible
 - Spaced-repetition revisits
 - Live deployment with a public demo link

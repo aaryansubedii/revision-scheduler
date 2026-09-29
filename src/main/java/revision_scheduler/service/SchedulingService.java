@@ -5,6 +5,7 @@ import revision_scheduler.model.StudySession;
 import revision_scheduler.model.Topic;
 import revision_scheduler.repository.ModuleRepository;
 import revision_scheduler.repository.StudySessionRepository;
+import revision_scheduler.repository.TopicRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,21 +20,15 @@ public class SchedulingService {
     private ModuleRepository moduleRepository;
 
     @Autowired
+    private TopicRepository topicRepository;
+
+    @Autowired
     private StudySessionRepository studySessionRepository;
 
-    /**
-     * Generates a revision schedule from today until the latest exam date,
-     * using a priority-based greedy allocation algorithm.
-     *
-     * Priority score = (difficulty * remainingHours) / daysUntilExam
-     * Higher score = more urgent. Each day, available hours are allocated
-     * to the highest-priority topics first.
-     */
     public List<StudySession> generateSchedule(double dailyAvailableHours) {
         List<Module> modules = moduleRepository.findAll();
         LocalDate today = LocalDate.now();
 
-        // Clear ALL uncompleted sessions (including missed ones) so their hours get rescheduled
         List<StudySession> existing = studySessionRepository.findAll();
         for (StudySession s : existing) {
             if (!s.isCompleted()) {
@@ -41,11 +36,15 @@ public class SchedulingService {
             }
         }
 
-        // Gather all topics with remaining work, across all modules
+        // Fetch topics explicitly per module instead of relying on lazy-loaded
+        // module.getTopics(), which requires an open Hibernate session that
+        // may not exist by the time this method runs (e.g. in tests, or across
+        // request boundaries).
         List<Topic> allTopics = new ArrayList<>();
         for (Module m : modules) {
-            if (m.getExamDate().isBefore(today)) continue; // skip past exams
-            for (Topic t : m.getTopics()) {
+            if (m.getExamDate().isBefore(today)) continue;
+            List<Topic> topicsForModule = topicRepository.findByModuleId(m.getId());
+            for (Topic t : topicsForModule) {
                 if (t.getRemainingHours() > 0) {
                     allTopics.add(t);
                 }
@@ -56,7 +55,6 @@ public class SchedulingService {
             return new ArrayList<>();
         }
 
-        // Find the furthest exam date to know our scheduling horizon
         LocalDate latestExam = modules.stream()
                 .map(Module::getExamDate)
                 .filter(d -> !d.isBefore(today))
@@ -65,7 +63,6 @@ public class SchedulingService {
 
         List<StudySession> generatedSessions = new ArrayList<>();
 
-        // Track remaining hours needed per topic (working copy)
         Map<Long, Double> remainingHours = new HashMap<>();
         for (Topic t : allTopics) {
             remainingHours.put(t.getId(), t.getRemainingHours());
@@ -75,13 +72,12 @@ public class SchedulingService {
         while (cursor.isBefore(latestExam.plusDays(1)) && stillHasWork(remainingHours)) {
             double hoursLeftToday = dailyAvailableHours;
 
-            // Recalculate priority scores fresh each day, since urgency changes as exams approach
             List<Topic> sortedByPriority = new ArrayList<>(allTopics);
             LocalDate finalCursor = cursor;
             sortedByPriority.sort((a, b) -> {
                 double scoreA = priorityScore(a, remainingHours.get(a.getId()), finalCursor);
                 double scoreB = priorityScore(b, remainingHours.get(b.getId()), finalCursor);
-                return Double.compare(scoreB, scoreA); // descending
+                return Double.compare(scoreB, scoreA);
             });
 
             for (Topic topic : sortedByPriority) {
@@ -90,7 +86,6 @@ public class SchedulingService {
                 double remaining = remainingHours.get(topic.getId());
                 if (remaining <= 0) continue;
 
-                // Don't schedule a topic after its module's exam date
                 if (!cursor.isBefore(topic.getModule().getExamDate())) continue;
 
                 double allocate = Math.min(remaining, hoursLeftToday);
@@ -111,7 +106,7 @@ public class SchedulingService {
 
     private double priorityScore(Topic topic, double remainingHours, LocalDate fromDate) {
         long daysUntilExam = ChronoUnit.DAYS.between(fromDate, topic.getModule().getExamDate());
-        if (daysUntilExam <= 0) daysUntilExam = 1; // avoid divide-by-zero, treat as maximally urgent
+        if (daysUntilExam <= 0) daysUntilExam = 1;
         return (topic.getDifficulty() * remainingHours) / daysUntilExam;
     }
 
