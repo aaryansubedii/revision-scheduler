@@ -2,13 +2,6 @@
 
 A full-stack app that builds a revision timetable from your modules and exam dates, then re-plans it as you make progress.
 
-## Screenshots
-
-### AI-generated topics
-![AI topics generated](Screenshots/topics-generated.png)
-
-### Completing a study session
-![Session completed](Screenshots/session-completed.png)
 
 ## Why I built this
 
@@ -110,6 +103,15 @@ groq.api.key=YOUR_KEY
 | POST | /api/schedule/generate | Generate or recalculate the schedule |
 | GET | /api/schedule | View all sessions |
 | PUT | /api/schedule/{id}/complete | Mark a session complete |
+
+## Screenshots
+
+### AI-generated topics
+![AI topics generated](Screenshots/topics-generated.png)
+
+### Completing a study session
+![Session completed](Screenshots/session-completed.png)
+
 
 ## Testing
 
