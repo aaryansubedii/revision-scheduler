@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Revision Scheduler</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>🧠 Adaptive Revision Scheduler</h1>
+    <p class="subtitle">Add your modules, let AI break them into topics, then generate a schedule that adapts as you progress.</p>
+
+    <section class="card">
+        <h2>1. Add a module</h2>
+        <form id="module-form">
+            <input type="text" id="module-name" placeholder="Module name (e.g. Discrete Mathematics)" required>
+            <input type="date" id="module-exam" required>
+            <button type="submit">Add module</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>2. Your modules</h2>
+        <div id="modules"></div>
+    </section>
+
+    <section class="card">
+        <h2>3. Generate schedule</h2>
+        <form id="schedule-form">
+            <label>Hours available per day</label>
+            <input type="number" id="daily-hours" min="0.5" step="0.5" value="2" required>
+            <button type="submit">Generate / Recalculate</button>
+        </form>
+        <div id="schedule"></div>
+    </section>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
